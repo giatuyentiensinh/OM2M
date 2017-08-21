@@ -1,0 +1,4 @@
+[submodule "ngx-admin-lte"]
+	path = ngx-admin-lte
+	url = https://github.com/giatuyentiensinh/ngx-admin-lte.git
+	branch = om2m

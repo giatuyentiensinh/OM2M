@@ -1,0 +1,9 @@
+This binding makes the integration of the MQTT Protocol into the OM2M platform following
+the oneM2M document TS-0010 v2.4.
+
+This does NOT include a MQTT Broker. It has to be deployed seperatly.
+The link to the broker is set via the constants:
+	org.eclipse.om2m.mqtt.ip
+	org.eclipse.om2m.mqtt.port
+
+For other constants, see java class: org.eclipse.om2m.binding.mqtt.util.MqttConstants.java
