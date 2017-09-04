@@ -74,7 +74,7 @@ public class ControlSensor {
 
 	public static String observeButton(String addr, String port) {
 		CoapClient client = new CoapClient("coap://[" + addr + "]:" + port
-				+ "/test/event_button");
+				+ "/actuators/event_button");
 		clientobs = client.observe(new CoapHandler() {
 			@Override
 			public void onLoad(CoapResponse res) {

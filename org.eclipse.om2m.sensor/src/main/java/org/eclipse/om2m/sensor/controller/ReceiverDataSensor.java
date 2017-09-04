@@ -8,7 +8,7 @@ import java.net.SocketException;
 import org.eclipse.om2m.commons.resource.ContentInstance;
 import org.eclipse.om2m.sensor.RequestSender;
 import org.eclipse.om2m.sensor.constants.SensorConstants;
-import org.eclipse.om2m.sensor.model.DataHumidSensor;
+import org.eclipse.om2m.sensor.model.DataHumidTempSensor;
 import org.eclipse.om2m.sensor.model.DataSensor;
 import org.eclipse.om2m.sensor.model.Sensor;
 import org.json.JSONException;
@@ -55,15 +55,14 @@ public class ReceiverDataSensor {
 							.getAddress().toString()) {
 					};
 				} else if (1024 - count == 14) {
-					dataSensor = new DataHumidSensor(dataByte, recvPacket
+					DataHumidTempSensor dataSensor2 = new DataHumidTempSensor(dataByte, recvPacket
 							.getAddress().toString());
+					dataSensor = dataSensor2;
+					System.out.println(dataSensor);
+					
 					try {
-						dataObj.put("sensor_temperature",
-								((DataHumidSensor) dataSensor)
-										.getSensorTemperature());
-						dataObj.put("sensor_humidity",
-								((DataHumidSensor) dataSensor)
-										.getSensorHumidity());
+						dataObj.put("sensor_temperature",dataSensor2.getSensorTemperature());
+						dataObj.put("sensor_humidity", dataSensor2.getSensorHumidity());
 					} catch (JSONException e) {
 						e.printStackTrace();
 					}

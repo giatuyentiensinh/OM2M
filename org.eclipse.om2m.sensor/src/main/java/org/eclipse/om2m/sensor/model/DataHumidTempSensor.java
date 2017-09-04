@@ -7,13 +7,13 @@ import org.eclipse.om2m.commons.obix.Obj;
 import org.eclipse.om2m.commons.obix.Str;
 import org.eclipse.om2m.commons.obix.io.ObixEncoder;
 
-public class DataHumidSensor extends DataSensor {
+public class DataHumidTempSensor extends DataSensor {
 	private final static Integer OFFSET = 10;
 	private final static Integer LENGTH = 4;
 	private int sensorTemperature;
 	private int sensorHumidity;
 
-	public DataHumidSensor(byte[] data, String address) {
+	public DataHumidTempSensor(byte[] data, String address) {
 		super(data, address);
 		ByteBuffer buffer = ByteBuffer.wrap(data, OFFSET, LENGTH);
 		this.sensorTemperature = converteData(buffer.getShort());

@@ -1098,9 +1098,9 @@ var RestService = (function () {
     function RestService(http, socket) {
         this.http = http;
         this.socket = socket;
-        this.onMsgNews = new __WEBPACK_IMPORTED_MODULE_5_rxjs_socket_io__["ioEvent"]("msg");
+        this.onMsgNews = new __WEBPACK_IMPORTED_MODULE_5_rxjs_socket_io__["ioEvent"]('msg');
         this.socket.listenToEvent(this.onMsgNews);
-        this.onObsBtn = new __WEBPACK_IMPORTED_MODULE_5_rxjs_socket_io__["ioEvent"]("obj");
+        this.onObsBtn = new __WEBPACK_IMPORTED_MODULE_5_rxjs_socket_io__["ioEvent"]('obj');
         this.socket.listenToEvent(this.onObsBtn);
         this.socket.connect('http://' + window.location.hostname + ':9092');
         // this.modelName = 'in-cse/in-name'; // for dev
@@ -1112,17 +1112,6 @@ var RestService = (function () {
     }
     RestService.prototype.setApiUrl = function (url) {
         this.serverWithApiUrl = url;
-    };
-    // HELPERS
-    RestService.prototype.getAllFromLS = function (maxtime) {
-        if (maxtime === void 0) { maxtime = 0; }
-        var json = localStorage.getItem('rest_all_' + this.modelName);
-        if (json) {
-            var obj = JSON.parse(json);
-            if (obj && (obj.date < (Date.now() - maxtime))) {
-                return obj;
-            }
-        }
     };
     RestService.prototype.streamIO = function () {
         return this.onMsgNews.event$;
@@ -1164,20 +1153,27 @@ var RestService = (function () {
             __WEBPACK_IMPORTED_MODULE_4_xml2js__["parseString"](xml, function (err, param) {
                 for (var _i = 0, _a = param.obj.int; _i < _a.length; _i++) {
                     var item = _a[_i];
-                    if ('adc1' === item['$'].name)
+                    if ('adc1' === item['$'].name) {
                         adc1 = item['$'].val;
-                    if ('adc2' === item['$'].name)
+                    }
+                    if ('adc2' === item['$'].name) {
                         adc2 = item['$'].val;
-                    if ('adc3' === item['$'].name)
+                    }
+                    if ('adc3' === item['$'].name) {
                         adc3 = item['$'].val;
-                    if ('battery' === item['$'].name)
+                    }
+                    if ('battery' === item['$'].name) {
                         battery = item['$'].val;
-                    if ('temperature' === item['$'].name)
+                    }
+                    if ('temperature' === item['$'].name) {
                         temperature = item['$'].val;
-                    if ('sensor_temperature' === item['$'].name)
+                    }
+                    if ('sensor_temperature' === item['$'].name) {
                         sensor_temperature = item['$'].val;
-                    if ('sensor_humidity' === item['$'].name)
+                    }
+                    if ('sensor_humidity' === item['$'].name) {
                         sensor_humidity = item['$'].val;
+                    }
                 }
                 result = {
                     adc1: adc1,
@@ -1191,9 +1187,25 @@ var RestService = (function () {
             });
             return result;
         })
-            .catch(this.handleError);
+            .catch(function (err) {
+            if (err.status === 404) {
+                return __WEBPACK_IMPORTED_MODULE_3_rxjs_Observable__["Observable"].throw('First data not fould in RE-Mote/DATA');
+            }
+            return __WEBPACK_IMPORTED_MODULE_3_rxjs_Observable__["Observable"].throw(err.json().error);
+        });
     };
     RestService.prototype.getAllData = function (application_name) {
+        // Get data from cache.
+        var json = localStorage.getItem('rest_all_om2m');
+        // cache time is 2 minute.
+        var cacheTime = 2 * 60000;
+        if (json) {
+            var obj = JSON.parse(json);
+            if (Date.now() - obj.date < cacheTime && obj.data.length > 20) {
+                return __WEBPACK_IMPORTED_MODULE_3_rxjs_Observable__["Observable"].of(obj.data);
+            }
+        }
+        // If cache expire then get from http.
         return this.http.get('/~/' + this.modelName + '/' + application_name + '/DATA?rcn=4', {
             headers: this.headers
         })
@@ -1205,22 +1217,32 @@ var RestService = (function () {
                     var adc1, adc2, adc3, battery, temperature, sensor_temperature, sensor_humidity, addr, time;
                     for (var _i = 0, _a = param.obj.int; _i < _a.length; _i++) {
                         var item = _a[_i];
-                        if ('adc1' === item['$'].name) {
-                            adc1 = item['$'].val;
-                            time = e.lt;
+                        switch (item['$'].name) {
+                            case 'adc1':
+                                adc1 = item['$'].val;
+                                time = e.lt;
+                                break;
+                            case 'adc2':
+                                adc2 = item['$'].val;
+                                break;
+                            case 'adc3':
+                                adc3 = item['$'].val;
+                                break;
+                            case 'battery':
+                                battery = item['$'].val;
+                                break;
+                            case 'temperature':
+                                temperature = item['$'].val;
+                                break;
+                            case 'sensor_temperature':
+                                sensor_temperature = item['$'].val;
+                                break;
+                            case 'sensor_humidity':
+                                sensor_humidity = item['$'].val;
+                                break;
+                            default:
+                                break;
                         }
-                        else if ('adc2' === item['$'].name)
-                            adc2 = item['$'].val;
-                        else if ('adc3' === item['$'].name)
-                            adc3 = item['$'].val;
-                        else if ('battery' === item['$'].name)
-                            battery = item['$'].val;
-                        else if ('temperature' === item['$'].name)
-                            temperature = item['$'].val;
-                        else if ('sensor_temperature' === item['$'].name)
-                            sensor_temperature = item['$'].val;
-                        else if ('sensor_humidity' === item['$'].name)
-                            sensor_humidity = item['$'].val;
                         addr = param.obj.str[0]['$'].val;
                     }
                     result.push({
@@ -1240,81 +1262,18 @@ var RestService = (function () {
                 var e = xml_1[_i];
                 _loop_1(e);
             }
-            // localStorage.setItem('rest_all_om2m', JSON.stringify({ data: result, date: new Date() }));
+            localStorage.setItem('rest_all_om2m', JSON.stringify({ data: result, date: Date.now() }));
             return result;
         })
-            .catch(this.handleError);
-    };
-    RestService.prototype.getFromCache = function (id) {
-        if (this.lastGetAll) {
-            return this.lastGetAll.find(function (unit) { return unit.id === id; });
-        }
-        else {
-            return null;
-        }
-    };
-    RestService.prototype.getActionUrl = function () {
-        return this.serverWithApiUrl + this.modelName + '/';
-    };
-    // REST functions
-    RestService.prototype.getAll = function () {
-        var _this = this;
-        return this.http.get(this.getActionUrl())
-            .map(function (response) {
-            // getting an array having the same name as the model
-            var data = response.json()[_this.modelName];
-            // transforming the array from indexed to associative
-            var tab = data.records.map(function (elem) {
-                var unit = {};
-                // using the columns order and number to rebuild the object
-                data.columns.forEach(function (champ, index) {
-                    unit[champ] = elem[index];
-                });
-                return unit;
-            });
-            _this.lastGetAll = tab;
-            var obj = {
-                data: tab,
-                date: Date.now()
-            };
-            localStorage.setItem('rest_all_' + _this.modelName, JSON.stringify(obj));
-            return tab;
-        })
-            .catch(this.handleError);
-    };
-    RestService.prototype.get = function (id) {
-        var _this = this;
-        return this.http.get(this.getActionUrl() + id)
-            .map(function (response) {
-            var data = response.json();
-            _this.lastGet = data;
-            return data;
-        })
-            .catch(this.handleError);
-    };
-    RestService.prototype.add = function (item) {
-        var toAdd = JSON.stringify(item);
-        return this.http.post(this.getActionUrl(), toAdd, { headers: this.headers })
-            .map(function (response) { return response.json(); })
-            .catch(this.handleError);
-    };
-    RestService.prototype.addAll = function (tab) {
-        var toAdd = JSON.stringify(tab);
-        return this.http.post(this.getActionUrl(), toAdd, { headers: this.headers })
-            .map(function (response) { return response.json(); })
-            .catch(this.handleError);
-    };
-    RestService.prototype.update = function (id, itemToUpdate) {
-        return this.http.put(this.getActionUrl() + id, JSON.stringify(itemToUpdate), { headers: this.headers })
-            .map(function (response) { return response.json(); })
-            .catch(this.handleError);
-    };
-    RestService.prototype.delete = function (id) {
-        return this.http.delete(this.getActionUrl() + id)
-            .catch(this.handleError);
+            .catch(function (err) {
+            if (err.message === 'xml_1 is undefined') {
+                return __WEBPACK_IMPORTED_MODULE_3_rxjs_Observable__["Observable"].throw('RE-Mote/DATA is empty');
+            }
+            return __WEBPACK_IMPORTED_MODULE_3_rxjs_Observable__["Observable"].throw(err.json().error);
+        });
     };
     RestService.prototype.handleError = function (error) {
-        console.error(error);
+        // console.error(error);
         return __WEBPACK_IMPORTED_MODULE_3_rxjs_Observable__["Observable"].throw(error.json().error || 'Server error');
     };
     return RestService;
@@ -2202,12 +2161,11 @@ var UserBoxComponent = (function () {
         var _this = this;
         this.userServ = userServ;
         this.router = router;
-        //default user
         this.currentUser = new __WEBPACK_IMPORTED_MODULE_1__models_user__["a" /* User */]({
-            avatarUrl: 'public/assets/img/user2-160x160.jpg',
-            email: 'weber.antoine.pro@gmail.com',
-            firstname: 'WEBER',
-            lastname: 'Antoine'
+            avatarUrl: '',
+            email: 'giatuyentiensinh@gmail.com',
+            firstname: 'Tuyen',
+            lastname: 'Nguyen'
         });
         this.logout = function () {
             _this.userServ.logout();
@@ -2311,7 +2269,10 @@ var BarComponent = (function () {
                 _this.barChartDataADC[1].data.push(data.adc3 / 1000);
                 _this.barChartDataBattery[0].data.push(data.battery / 1000);
                 _this.barChartLabels.push(_this.datePipe.transform(new Date(), 'mm:ss'));
-                _this.barChartDataADC = [{ data: _this.barChartDataADC[0].data, label: 'ADC1' }, { data: _this.barChartDataADC[1].data, label: 'ADC3' }];
+                _this.barChartDataADC = [
+                    { data: _this.barChartDataADC[0].data, label: 'ADC1' },
+                    { data: _this.barChartDataADC[1].data, label: 'ADC3' }
+                ];
                 _this.barChartDataBattery = [{ data: _this.barChartDataBattery[0].data, label: 'Battery' }];
                 _this.datas.unshift({
                     time: new Date(),
@@ -2324,8 +2285,9 @@ var BarComponent = (function () {
         });
     };
     BarComponent.prototype.ngOnDestroy = function () {
-        if (this.subscribe)
+        if (this.subscribe) {
             this.subscribe.unsubscribe();
+        }
     };
     return BarComponent;
 }());
@@ -2345,7 +2307,7 @@ var _a, _b;
 /***/ "../../../../../src/app/pages/chart/line/line.component.html":
 /***/ (function(module, exports) {
 
-module.exports = "<section class=\"col-lg-6\" *ngIf=\"lineChartDataTemp.length > 0\">\n    <div class=\"box box-danger direct-chat direct-chat-danger\">\n        <div class=\"box-header with-border\">\n            <h3 class=\"box-title\">Temperature</h3>\n            <div class=\"box-tools pull-right\">\n                <span class=\"label label-danger\">{{datas.length}} records</span>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-minus\"></i>\n                </button>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-toggle=\"tooltip\" title=\"Detail\" data-widget=\"chat-pane-toggle\">\n                    <i class=\"fa fa-comments\"></i>\n                </button>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n            </div>\n        </div>\n        <div class=\"box-body\">\n            <div style=\"display: block;\">\n                <canvas *ngIf=\"lineChartDataTemp.length > 0\" baseChart height=\"150px;\" [datasets]=\"lineChartDataTemp\" [labels]=\"lineChartLabels\" [options]=\"lineChartOptions\" [colors]=\"lineChartColorTemp\" [legend]=\"lineChartLegend\" [chartType]=\"lineChartType\"></canvas>\n            </div>\n            <div class=\"direct-chat-contacts\">\n                <ul class=\"contacts-list\">\n                    <li *ngFor=\"let item of datas\">\n                        <div class=\"contacts-list-info\">\n                            <span class=\"contacts-list-name\" *ngIf=\"item?.sensor_temperature\">\n                              {{item.sensor_temperature / 10}} °C\n                              <small class=\"contacts-list-date pull-right\">{{item.time | date: 'hh:mm:ss'}}</small>\n                            </span>\n                        </div>\n                    </li>\n                </ul>\n            </div>\n        </div>\n        <div class=\"box-footer\">\n            <div class=\"row\">\n                <div class=\"col-sm-6 col-xs-6\">\n                    <div class=\"description-block border-right\">\n                        <span class=\"description-percentage text-yellow\">Last</span>\n                        <h5 class=\"description-header\">{{datas[0].sensor_temperature / 10}} °C</h5>\n                    </div>\n                    <!-- /.description-block -->\n                </div>\n                <!-- /.col -->\n                <div class=\"col-sm-6 col-xs-6\">\n                    <div class=\"description-block\">\n                        <span class=\"description-percentage text-green\">First</span>\n                        <h5 class=\"description-header\">{{datas[datas.length - 1].sensor_temperature / 10}} °C</h5>\n                    </div>\n                    <!-- /.description-block -->\n                </div>\n            </div>\n            <!-- /.row -->\n        </div>\n    </div>\n</section>\n<section class=\"col-lg-6\" *ngIf=\"lineChartDataHumi.length > 0\">\n    <div class=\"box box-primary direct-chat direct-chat-primary\">\n        <div class=\"box-header with-border\">\n            <h3 class=\"box-title\">Humidity</h3>\n            <div class=\"box-tools pull-right\">\n                <span class=\"label label-info\">{{datas.length}} records</span>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-minus\"></i>\n                </button>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-toggle=\"tooltip\" title=\"Detail\" data-widget=\"chat-pane-toggle\">\n                    <i class=\"fa fa-comments\"></i>\n                </button>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n            </div>\n        </div>\n        <div class=\"box-body\">\n            <div style=\"display: block;\">\n                <canvas *ngIf=\"lineChartDataHumi.length > 0\" baseChart height=\"150px;\" [datasets]=\"lineChartDataHumi\" [labels]=\"lineChartLabels\" [options]=\"lineChartOptions\" [colors]=\"lineChartColorHumi\" [legend]=\"lineChartLegend\" [chartType]=\"lineChartType\"></canvas>\n            </div>\n            <div class=\"direct-chat-contacts\">\n                <ul class=\"contacts-list\">\n                    <li *ngFor=\"let item of datas\">\n                        <div class=\"contacts-list-info\">\n                            <span class=\"contacts-list-name\" *ngIf=\"item?.sensor_humidity\">\n                              {{item.sensor_humidity / 10}} %\n                              <small class=\"contacts-list-date pull-right\">{{item.time | date: 'hh:mm:ss'}}</small>\n                            </span>\n                        </div>\n                    </li>\n                </ul>\n            </div>\n        </div>\n        <div class=\"box-footer\">\n            <div class=\"row\">\n                <div class=\"col-sm-6 col-xs-6\">\n                    <div class=\"description-block border-right\">\n                        <span class=\"description-percentage text-yellow\">Last</span>\n                        <h5 class=\"description-header\">{{datas[0].sensor_humidity / 10}} %</h5>\n                    </div>\n                    <!-- /.description-block -->\n                </div>\n                <!-- /.col -->\n                <div class=\"col-sm-6 col-xs-6\">\n                    <div class=\"description-block\">\n                        <span class=\"description-percentage text-green\">First</span>\n                        <h5 class=\"description-header\">{{datas[datas.length - 1].sensor_humidity / 10}} %</h5>\n                    </div>\n                    <!-- /.description-block -->\n                </div>\n            </div>\n            <!-- /.row -->\n        </div>\n    </div>\n</section>\n"
+module.exports = "<section class=\"col-lg-6\" *ngIf=\"lineChartDataTemp.length > 0\">\n    <div class=\"box box-danger direct-chat direct-chat-danger\">\n        <div class=\"box-header with-border\">\n            <h3 class=\"box-title\">Temperature</h3>\n            <div class=\"box-tools pull-right\">\n                <span class=\"label label-info\">Min {{min_temp / 10}} °C</span>\n                <span class=\"label label-danger\">Max {{max_temp / 10}} °C</span>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-minus\"></i>\n                </button>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-toggle=\"tooltip\" title=\"Detail\" data-widget=\"chat-pane-toggle\">\n                    <i class=\"fa fa-comments\"></i>\n                </button>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n            </div>\n        </div>\n        <div class=\"box-body\">\n            <div style=\"display: block;\">\n                <canvas *ngIf=\"lineChartDataTemp.length > 0\" baseChart height=\"150px;\" [datasets]=\"lineChartDataTemp\" [labels]=\"lineChartLabels\" [options]=\"lineChartOptions\" [colors]=\"lineChartColorTemp\" [legend]=\"lineChartLegend\" [chartType]=\"lineChartType\"></canvas>\n            </div>\n            <div class=\"direct-chat-contacts\">\n                <ul class=\"contacts-list\">\n                    <li *ngFor=\"let item of datas\">\n                        <div class=\"contacts-list-info\">\n                            <span class=\"contacts-list-name\" *ngIf=\"item?.sensor_temperature\">\n                              {{item.sensor_temperature / 10}} °C\n                              <small class=\"contacts-list-date pull-right\">{{item.time | date: 'hh:mm:ss'}}</small>\n                            </span>\n                        </div>\n                    </li>\n                </ul>\n            </div>\n        </div>\n        <div class=\"box-footer\">\n            <div class=\"row\">\n                <div class=\"col-sm-6 col-xs-6\">\n                    <div class=\"description-block border-right\">\n                        <span class=\"description-percentage text-yellow\">Last</span>\n                        <h5 class=\"description-header\">{{datas[0].sensor_temperature / 10}} °C</h5>\n                    </div>\n                    <!-- /.description-block -->\n                </div>\n                <!-- /.col -->\n                <div class=\"col-sm-6 col-xs-6\">\n                    <div class=\"description-block\">\n                        <span class=\"description-percentage text-green\">First</span>\n                        <h5 class=\"description-header\">{{datas[datas.length - 1].sensor_temperature / 10}} °C</h5>\n                    </div>\n                    <!-- /.description-block -->\n                </div>\n            </div>\n            <!-- /.row -->\n        </div>\n    </div>\n</section>\n<section class=\"col-lg-6\" *ngIf=\"lineChartDataHumi.length > 0\">\n    <div class=\"box box-primary direct-chat direct-chat-primary\">\n        <div class=\"box-header with-border\">\n            <h3 class=\"box-title\">Humidity</h3>\n            <div class=\"box-tools pull-right\">\n                <span class=\"label label-info\">Min {{min_humi / 10}} %</span>\n                <span class=\"label label-danger\">Max {{max_humi / 10}} %</span>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-minus\"></i>\n                </button>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-toggle=\"tooltip\" title=\"Detail\" data-widget=\"chat-pane-toggle\">\n                    <i class=\"fa fa-comments\"></i>\n                </button>\n                <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n            </div>\n        </div>\n        <div class=\"box-body\">\n            <div style=\"display: block;\">\n                <canvas *ngIf=\"lineChartDataHumi.length > 0\" baseChart height=\"150px;\" [datasets]=\"lineChartDataHumi\" [labels]=\"lineChartLabels\" [options]=\"lineChartOptions\" [colors]=\"lineChartColorHumi\" [legend]=\"lineChartLegend\" [chartType]=\"lineChartType\"></canvas>\n            </div>\n            <div class=\"direct-chat-contacts\">\n                <ul class=\"contacts-list\">\n                    <li *ngFor=\"let item of datas\">\n                        <div class=\"contacts-list-info\">\n                            <span class=\"contacts-list-name\" *ngIf=\"item?.sensor_humidity\">\n                              {{item.sensor_humidity / 10}} %\n                              <small class=\"contacts-list-date pull-right\">{{item.time | date: 'hh:mm:ss'}}</small>\n                            </span>\n                        </div>\n                    </li>\n                </ul>\n            </div>\n        </div>\n        <div class=\"box-footer\">\n            <div class=\"row\">\n                <div class=\"col-sm-6 col-xs-6\">\n                    <div class=\"description-block border-right\">\n                        <span class=\"description-percentage text-yellow\">Last</span>\n                        <h5 class=\"description-header\">{{datas[0].sensor_humidity / 10}} %</h5>\n                    </div>\n                    <!-- /.description-block -->\n                </div>\n                <!-- /.col -->\n                <div class=\"col-sm-6 col-xs-6\">\n                    <div class=\"description-block\">\n                        <span class=\"description-percentage text-green\">First</span>\n                        <h5 class=\"description-header\">{{datas[datas.length - 1].sensor_humidity / 10}} %</h5>\n                    </div>\n                    <!-- /.description-block -->\n                </div>\n            </div>\n            <!-- /.row -->\n        </div>\n    </div>\n</section>\n"
 
 /***/ }),
 
@@ -2370,8 +2332,10 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 
 
 var MAX_RECORDS = 20;
+var CHECKTEMP = 30 * 10;
 var LineComponent = (function () {
-    function LineComponent(rest, datePipe) {
+    function LineComponent(noServ, rest, datePipe) {
+        this.noServ = noServ;
         this.rest = rest;
         this.datePipe = datePipe;
         this.lineChartDataTemp = [];
@@ -2400,6 +2364,10 @@ var LineComponent = (function () {
         this.lineChartType = 'line';
         // data
         this.datas = [];
+        this.max_temp = 0;
+        this.min_temp = 0;
+        this.max_humi = 0;
+        this.min_humi = 0;
     }
     LineComponent.prototype.ngOnInit = function () {
         var _this = this;
@@ -2407,7 +2375,7 @@ var LineComponent = (function () {
             var datastemp = [];
             var datashumi = [];
             var times = [];
-            res = res.slice(0, MAX_RECORDS);
+            res = res.slice(res.length - MAX_RECORDS, res.length - 1);
             _this.datas = res;
             res.map(function (item) {
                 if (item.sensor_temperature) {
@@ -2416,6 +2384,7 @@ var LineComponent = (function () {
                     times.push(_this.datePipe.transform(item.time, 'hh:mm:ss'));
                 }
             });
+            _this.updateMaxMin();
             if (datastemp.length > 0) {
                 _this.lineChartDataTemp = [{ data: datastemp, label: 'Temperature sensor (°C)' }];
                 _this.lineChartDataHumi = [{ data: datashumi, label: 'Humidity sensor (%)' }];
@@ -2426,6 +2395,7 @@ var LineComponent = (function () {
                     _this.lineChartLabels.shift();
                     _this.lineChartDataHumi[0].data.shift();
                     _this.lineChartDataTemp[0].data.shift();
+                    _this.datas.shift();
                 }
                 _this.lineChartDataTemp[0].data.push(data.sensor_temperature / 10);
                 _this.lineChartDataHumi[0].data.push(data.sensor_humidity / 10);
@@ -2435,14 +2405,30 @@ var LineComponent = (function () {
                     sensor_temperature: data.sensor_temperature,
                     time: new Date()
                 });
+                if (data.sensor_temperature > CHECKTEMP) {
+                    _this.noServ.warning('Temperature is ' + data.sensor_temperature / 10 + ' °C', 'Warning! Too hot');
+                }
+                _this.updateMaxMin();
                 _this.lineChartDataTemp = [{ data: _this.lineChartDataTemp[0].data, label: 'Temperature sensor (°C)' }];
                 _this.lineChartDataHumi = [{ data: _this.lineChartDataHumi[0].data, label: 'Humidity sensor (%)' }];
+            }, function (err) {
+                localStorage.removeItem('rest_all_om2m');
             });
         });
     };
+    LineComponent.prototype.updateMaxMin = function () {
+        if (this.datas.length < 0) {
+            return;
+        }
+        this.max_temp = Math.max.apply(Math, this.datas.map(function (data) { return data.sensor_temperature; }));
+        this.min_temp = Math.min.apply(Math, this.datas.map(function (data) { return data.sensor_temperature; }));
+        this.max_humi = Math.max.apply(Math, this.datas.map(function (data) { return data.sensor_humidity; }));
+        this.min_humi = Math.min.apply(Math, this.datas.map(function (data) { return data.sensor_humidity; }));
+    };
     LineComponent.prototype.ngOnDestroy = function () {
-        if (this.subscribe)
+        if (this.subscribe) {
             this.subscribe.unsubscribe();
+        }
     };
     return LineComponent;
 }());
@@ -2451,10 +2437,10 @@ LineComponent = __decorate([
         selector: 'chart-line',
         template: __webpack_require__("../../../../../src/app/pages/chart/line/line.component.html")
     }),
-    __metadata("design:paramtypes", [typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_2__ngx_admin_lte_index__["a" /* RestService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_2__ngx_admin_lte_index__["a" /* RestService */]) === "function" && _a || Object, typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_1__angular_common__["c" /* DatePipe */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1__angular_common__["c" /* DatePipe */]) === "function" && _b || Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_2__ngx_admin_lte_index__["c" /* NotificationService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_2__ngx_admin_lte_index__["c" /* NotificationService */]) === "function" && _a || Object, typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_2__ngx_admin_lte_index__["a" /* RestService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_2__ngx_admin_lte_index__["a" /* RestService */]) === "function" && _b || Object, typeof (_c = typeof __WEBPACK_IMPORTED_MODULE_1__angular_common__["c" /* DatePipe */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1__angular_common__["c" /* DatePipe */]) === "function" && _c || Object])
 ], LineComponent);
 
-var _a, _b;
+var _a, _b, _c;
 //# sourceMappingURL=line.component.js.map
 
 /***/ }),
@@ -2485,7 +2471,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 
 
 var RadarComponent = (function () {
-    function RadarComponent(rest) {
+    function RadarComponent(notification, rest) {
+        this.notification = notification;
         this.rest = rest;
         this.radarChartLabels = ['ADC1', 'ADC3', 'Battery'];
         this.radarChartData = [
@@ -2504,6 +2491,9 @@ var RadarComponent = (function () {
                     ],
                     label: 'RE-Mote'
                 }];
+        }, function (err) {
+            console.error(err);
+            _this.notification.error(err, 'Error');
         });
         this.subscribe = this.rest.streamIO().subscribe(function (data) {
             _this.radarChartData = [{
@@ -2526,10 +2516,10 @@ RadarComponent = __decorate([
         selector: 'chart-radar',
         template: __webpack_require__("../../../../../src/app/pages/chart/radar/radar.component.html")
     }),
-    __metadata("design:paramtypes", [typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1__ngx_admin_lte_index__["a" /* RestService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1__ngx_admin_lte_index__["a" /* RestService */]) === "function" && _a || Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1__ngx_admin_lte_index__["c" /* NotificationService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1__ngx_admin_lte_index__["c" /* NotificationService */]) === "function" && _a || Object, typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_1__ngx_admin_lte_index__["a" /* RestService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1__ngx_admin_lte_index__["a" /* RestService */]) === "function" && _b || Object])
 ], RadarComponent);
 
-var _a;
+var _a, _b;
 //# sourceMappingURL=radar.component.js.map
 
 /***/ }),
@@ -2555,7 +2545,7 @@ module.exports = module.exports.toString();
 /***/ "../../../../../src/app/pages/control/control.component.html":
 /***/ (function(module, exports) {
 
-module.exports = "<div class=\"row\">\n    <div class=\"col-md-4\">\n        <div class=\"box box-solid box-default\">\n            <div class=\"box-header with-border\">\n                <h3 class=\"box-title\">Search IPv6</h3>\n            </div>\n            <div class=\"box-body\">\n                <div class=\"input-group\">\n                    <ng2-completer [(ngModel)]=\"searchIp\" [datasource]=\"dataService\" [minSearchLength]=\"0\" class=\"completer-input\" placeholder=\"input ip of border router\"></ng2-completer>\n                    <div class=\"input-group-btn\">\n                        <button [disabled]=\"!searchIp\" (click)=\"searchIP()\" type=\"button\" class=\"btn btn-primary btn-flat\">Search</button>\n                    </div>\n                </div>\n            </div>\n        </div>\n        <div class=\"box box-solid box-info\" *ngIf=\"sensorIps.length > 0\">\n            <div class=\"box-header with-border\">\n                <h3 class=\"box-title\">Result IP</h3>\n                <div class=\"box-tools pull-right\">\n                    <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-minus\"></i>\n                    </button>\n                    <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n                </div>\n            </div>\n            <div class=\"box-body\">\n                <div class=\"external-event bg-green\" *ngFor=\"let ip of sensorIps\" (click)=\"selectIp(ip)\">{{ip}}</div>\n            </div>\n            <div class=\"overlay\" *ngIf=\"searchProcess\">\n                <i class=\"fa fa-refresh fa-spin\"></i>\n            </div>\n        </div>\n    </div>\n    <div class=\"col-md-8\" *ngIf=\"sensorIp != null\">\n        <!-- <div class=\"col-md-8\"> -->\n        <div class=\"col-md-7\">\n            <div class=\"box box-info box-solid\">\n                <div class=\"box-header with-border\">\n                    <h3 class=\"box-title\">LEDs control</h3>\n                    <div class=\"box-tools pull-right\">\n                        <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-minus\"></i>\n                        </button>\n                        <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n                    </div>\n                </div>\n                <div class=\"box-body\">\n                    <div class=\"info-box bg-red\">\n                        <span class=\"info-box-icon\"><i class=\"fa fa-lightbulb-o\"></i></span>\n                        <div class=\"info-box-content\">\n                            <span class=\"info-box-text\">RED</span>\n                            <span class=\"info-box-number\">IP: {{sensorIp}}</span>\n                            <ui-switch class=\"pull-right\" color=\"red\" [(ngModel)]=\"redStatus\" (change)=\"toggleRedLed()\"></ui-switch>\n                        </div>\n                    </div>\n                    <div class=\"info-box bg-green\">\n                        <span class=\"info-box-icon\"><i class=\"fa fa-lightbulb-o\"></i></span>\n                        <div class=\"info-box-content\">\n                            <span class=\"info-box-text\">GREEN</span>\n                            <span class=\"info-box-number\">IP: {{sensorIp}}</span>\n                            <ui-switch class=\"pull-right\" color=\"green\" [(ngModel)]=\"greenStatus\" (change)=\"toggleGreenLed()\"></ui-switch>\n                        </div>\n                    </div>\n                    <div class=\"info-box bg-blue\">\n                        <span class=\"info-box-icon\"><i class=\"fa fa-lightbulb-o\"></i></span>\n                        <div class=\"info-box-content\">\n                            <span class=\"info-box-text\">BLUE</span>\n                            <span class=\"info-box-number\">IP: {{sensorIp}}</span>\n                            <ui-switch class=\"pull-right\" color=\"blue\" [(ngModel)]=\"blueStatus\" (change)=\"toggleBlueLed()\"></ui-switch>\n                        </div>\n                        <!-- /.info-box-content -->\n                    </div>\n                </div>\n            </div>\n        </div>\n        <div class=\"col-md-5\">\n            <div class=\"box box-primary box-solid\">\n                <div class=\"box-header with-border\">\n                    <h3 class=\"box-title\">CoAP Control</h3>\n                    <div class=\"box-tools pull-right\">\n                        <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-minus\"></i>\n                        </button>\n                        <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n                    </div>\n                </div>\n                <!-- /.box-header -->\n                <div class=\"box-body\">\n                    <ul class=\"products-list product-list-in-box\">\n                        <li class=\"item\">\n                            <div class=\"product-img btn btn-info btn-lg\" (click)=\"toggleGPIO()\">\n                                <i class=\"fa fa-lightbulb-o\"></i>\n                            </div>\n                            <div class=\"product-info\">\n                                <div class=\"product-title\">GPIO toggle LED\n                                    <span class=\"label label-info pull-right\">PA4</span>\n                                </div>\n                                <span class=\"product-description\">IP: {{sensorIp}}</span>\n                            </div>\n                        </li>\n                        <li class=\"item\">\n                            <div class=\"product-img btn btn-danger btn-lg\">\n                                <i class=\"fa fa-genderless\"></i>\n                            </div>\n                            <div class=\"product-info\">\n                                <div class=\"product-title\">Motion sensor\n                                    <span class=\"label label-danger pull-right\">Observe</span>\n                                </div>\n                                <span class=\"product-description\">IP: {{sensorIp}}</span>\n                                <ui-switch class=\"pull-right\" color=\"yellow\" [(ngModel)]=\"obsStatus\" (change)=\"toggleObsBtn()\"></ui-switch>\n                            </div>\n                        </li>\n                    </ul>\n                </div>\n            </div>\n        </div>\n    </div>\n</div>\n"
+module.exports = "<div class=\"row\">\n    <div class=\"col-md-4\">\n        <div class=\"box box-solid box-default\">\n            <div class=\"box-header with-border\">\n                <h3 class=\"box-title\">Search IPv6</h3>\n            </div>\n            <div class=\"box-body\">\n                <div class=\"input-group\">\n                    <ng2-completer [(ngModel)]=\"searchIp\" [datasource]=\"dataService\" [minSearchLength]=\"0\" class=\"completer-input\" placeholder=\"input ip of border router\"></ng2-completer>\n                    <div class=\"input-group-btn\">\n                        <button [disabled]=\"!searchIp\" (click)=\"searchIP()\" type=\"button\" class=\"btn btn-primary btn-flat\">Search</button>\n                        <button (click)=\"cleanCache()\" type=\"button\" class=\"btn btn-default btn-flat\">RM IPs</button>\n                    </div>\n                </div>\n            </div>\n        </div>\n        <div class=\"box box-solid box-info\" *ngIf=\"sensorIps.length > 0\">\n            <div class=\"box-header with-border\">\n                <h3 class=\"box-title\">Result IP</h3>\n                <div class=\"box-tools pull-right\">\n                    <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-minus\"></i>\n                    </button>\n                    <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n                </div>\n            </div>\n            <div class=\"box-body\">\n                <div class=\"external-event bg-green\" *ngFor=\"let ip of sensorIps\" (click)=\"selectIp(ip)\">{{ip}}</div>\n            </div>\n            <div class=\"overlay\" *ngIf=\"searchProcess\">\n                <i class=\"fa fa-refresh fa-spin\"></i>\n            </div>\n        </div>\n    </div>\n    <div class=\"col-md-8\" *ngIf=\"sensorIp != null\">\n        <!-- <div class=\"col-md-8\"> -->\n        <div class=\"col-md-7\">\n            <div class=\"box box-info box-solid\">\n                <div class=\"box-header with-border\">\n                    <h3 class=\"box-title\">LEDs control</h3>\n                    <div class=\"box-tools pull-right\">\n                        <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-minus\"></i>\n                        </button>\n                        <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n                    </div>\n                </div>\n                <div class=\"box-body\">\n                    <div class=\"info-box bg-red\">\n                        <span class=\"info-box-icon\"><i class=\"fa fa-lightbulb-o\"></i></span>\n                        <div class=\"info-box-content\">\n                            <span class=\"info-box-text\">RED</span>\n                            <span class=\"info-box-number\">IP: {{sensorIp}}</span>\n                            <ui-switch class=\"pull-right\" color=\"red\" [(ngModel)]=\"redStatus\" (change)=\"toggleRedLed()\"></ui-switch>\n                        </div>\n                    </div>\n                    <div class=\"info-box bg-green\">\n                        <span class=\"info-box-icon\"><i class=\"fa fa-lightbulb-o\"></i></span>\n                        <div class=\"info-box-content\">\n                            <span class=\"info-box-text\">GREEN</span>\n                            <span class=\"info-box-number\">IP: {{sensorIp}}</span>\n                            <ui-switch class=\"pull-right\" color=\"green\" [(ngModel)]=\"greenStatus\" (change)=\"toggleGreenLed()\"></ui-switch>\n                        </div>\n                    </div>\n                    <div class=\"info-box bg-blue\">\n                        <span class=\"info-box-icon\"><i class=\"fa fa-lightbulb-o\"></i></span>\n                        <div class=\"info-box-content\">\n                            <span class=\"info-box-text\">BLUE</span>\n                            <span class=\"info-box-number\">IP: {{sensorIp}}</span>\n                            <ui-switch class=\"pull-right\" color=\"blue\" [(ngModel)]=\"blueStatus\" (change)=\"toggleBlueLed()\"></ui-switch>\n                        </div>\n                        <!-- /.info-box-content -->\n                    </div>\n                </div>\n            </div>\n        </div>\n        <div class=\"col-md-5\">\n            <div class=\"box box-primary box-solid\">\n                <div class=\"box-header with-border\">\n                    <h3 class=\"box-title\">CoAP Control</h3>\n                    <div class=\"box-tools pull-right\">\n                        <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-minus\"></i>\n                        </button>\n                        <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n                    </div>\n                </div>\n                <!-- /.box-header -->\n                <div class=\"box-body\">\n                    <ul class=\"products-list product-list-in-box\">\n                        <li class=\"item\">\n                            <div class=\"product-img btn btn-info btn-lg\" (click)=\"toggleGPIO()\">\n                                <i class=\"fa fa-lightbulb-o\"></i>\n                            </div>\n                            <div class=\"product-info\">\n                                <div class=\"product-title\">GPIO toggle LED\n                                    <span class=\"label label-info pull-right\">PA5</span>\n                                </div>\n                                <span class=\"product-description\">IP: {{sensorIp}}</span>\n                            </div>\n                        </li>\n                        <li class=\"item\">\n                            <div class=\"product-img btn btn-danger btn-lg\">\n                                <i class=\"fa fa-genderless\"></i>\n                            </div>\n                            <div class=\"product-info\">\n                                <div class=\"product-title\">Button tracking\n                                    <span class=\"label label-danger pull-right\">Observe</span>\n                                </div>\n                                <span class=\"product-description\">IP: {{sensorIp}}</span>\n                                <ui-switch class=\"pull-right\" color=\"yellow\" [(ngModel)]=\"obsStatus\" (change)=\"toggleObsBtn()\"></ui-switch>\n                            </div>\n                        </li>\n                    </ul>\n                </div>\n            </div>\n        </div>\n    </div>\n</div>\n"
 
 /***/ }),
 
@@ -2616,64 +2606,125 @@ var ControlComponent = (function () {
                 }
             ]
         });
+        var json = localStorage.getItem('rest_all_ips');
+        if (json) {
+            this.sensorIps = JSON.parse(json).data;
+            this.searchProcess = false;
+        }
     };
     ControlComponent.prototype.searchIP = function () {
         var _this = this;
         this.searchProcess = true;
         this.sensorIp = null;
         this.rest.searchIp(this.searchIp).subscribe(function (res) {
-            console.log(res);
             _this.sensorIps = res;
             _this.searchProcess = false;
-        });
+            localStorage.setItem('rest_all_ips', JSON.stringify({ data: _this.sensorIps, date: Date.now() }));
+        }, function (err) { return _this.noServ.error('Something wrong', 'Error'); });
+        // this.searchProcess = true;
+        // this.sensorIp = null;
+        // this.sensorIps = [
+        //   'aaaa::212:4b00:9df:4f53'
+        // ];
+        // this.searchProcess = false;
+        // localStorage.setItem('rest_all_ips', JSON.stringify({ data: this.sensorIps, date: Date.now() }));
     };
     ControlComponent.prototype.toggleRedLed = function () {
         var _this = this;
         this.redStatus = !this.redStatus;
-        if (this.redStatus)
+        if (this.redStatus) {
             this.rest.controlObj('setOnLebRed&addr=' + this.sensorIp)
-                .subscribe(function (res) { return _this.noServ.success('The Red led is turn on', 'Notification'); });
-        else
+                .subscribe(function (res) {
+                _this.noServ.success('The Red led is turn on', 'Notification');
+            }, function (err) {
+                _this.noServ.error('Something wrong', 'Error');
+            });
+        }
+        else {
             this.rest.controlObj('setOffLebRed&addr=' + this.sensorIp)
-                .subscribe(function (res) { return _this.noServ.success('The Red led is turn off', 'Notification'); });
+                .subscribe(function (res) {
+                _this.noServ.success('The Red led is turn off', 'Notification');
+            }, function (err) {
+                _this.noServ.error('Something wrong', 'Error');
+            });
+        }
     };
     ControlComponent.prototype.toggleGreenLed = function () {
         var _this = this;
         this.greenStatus = !this.greenStatus;
-        if (this.greenStatus)
+        if (this.greenStatus) {
             this.rest.controlObj('setOnLebGreen&addr=' + this.sensorIp)
-                .subscribe(function (res) { return _this.noServ.success('The Green led is turn on', 'Notification'); });
-        else
+                .subscribe(function (res) {
+                _this.noServ.success('The Green led is turn on', 'Notification');
+            }, function (err) {
+                _this.noServ.error('Something wrong', 'Error');
+            });
+        }
+        else {
             this.rest.controlObj('setOffLebGreen&addr=' + this.sensorIp)
-                .subscribe(function (res) { return _this.noServ.success('The Green led is turn off', 'Notification'); });
+                .subscribe(function (res) {
+                _this.noServ.success('The Green led is turn off', 'Notification');
+            }, function (err) {
+                _this.noServ.error('Something wrong', 'Error');
+            });
+        }
     };
     ControlComponent.prototype.toggleBlueLed = function () {
         var _this = this;
         this.blueStatus = !this.blueStatus;
-        if (this.blueStatus)
+        if (this.blueStatus) {
             this.rest.controlObj('setOnLebBlue&addr=' + this.sensorIp)
-                .subscribe(function (res) { return _this.noServ.success('The Blue led is turn on', 'Notification'); });
-        else
+                .subscribe(function (res) {
+                _this.noServ.success('The Blue led is turn on', 'Notification');
+            }, function (err) {
+                _this.noServ.error('Something wrong', 'Error');
+            });
+        }
+        else {
             this.rest.controlObj('setOffLebBlue&addr=' + this.sensorIp)
-                .subscribe(function (res) { return _this.noServ.success('The Blue led is turn off', 'Notification'); });
+                .subscribe(function (res) {
+                _this.noServ.success('The Blue led is turn off', 'Notification');
+            }, function (err) {
+                _this.noServ.error('Something wrong', 'Error');
+            });
+        }
     };
     ControlComponent.prototype.toggleGPIO = function () {
         var _this = this;
         this.rest.controlObj('gpio&addr=' + this.sensorIp)
-            .subscribe(function (res) { return _this.noServ.success('Request success', 'Notification'); });
+            .subscribe(function (res) {
+            _this.noServ.success('Request success', 'Notification');
+        }, function (err) {
+            _this.noServ.error('Something wrong', 'Error');
+        });
     };
     ControlComponent.prototype.toggleObsBtn = function () {
         var _this = this;
         this.obsStatus = !this.obsStatus;
-        if (this.obsStatus)
+        if (this.obsStatus) {
             this.rest.controlObj('observeBtnActive&addr=' + this.sensorIp)
-                .subscribe(function (res) { return _this.noServ.success('Observer button is turn on', 'Notification'); });
-        else
+                .subscribe(function (res) {
+                _this.noServ.success('Observer button is turn on', 'Notification');
+            }, function (err) {
+                _this.noServ.error('Something wrong', 'Error');
+            });
+        }
+        else {
             this.rest.controlObj('observeBtnCancel&addr=' + this.sensorIp)
-                .subscribe(function (res) { return _this.noServ.success('Observer button is turn off', 'Notification'); });
+                .subscribe(function (res) {
+                _this.noServ.success('Observer button is turn off', 'Notification');
+            }, function (err) {
+                _this.noServ.error('Something wrong', 'Error');
+            });
+        }
     };
     ControlComponent.prototype.selectIp = function (ip) {
         this.sensorIp = ip;
+    };
+    ControlComponent.prototype.cleanCache = function () {
+        localStorage.removeItem('rest_all_ips');
+        this.sensorIp = null;
+        this.sensorIps = [];
     };
     return ControlComponent;
 }());
@@ -2694,7 +2745,7 @@ var _a, _b, _c, _d;
 /***/ "../../../../../src/app/pages/home/home.component.html":
 /***/ (function(module, exports) {
 
-module.exports = "<div class=\"container-fluid\">\n    <h4>Current data</h4>\n    <div class=\"row\">\n        <div class=\"col-md-3 col-sm-6 col-xs-12\">\n            <div class=\"info-box\">\n                <span class=\"info-box-icon bg-aqua\"><i class=\"fa fa-tint\"></i></span>\n                <div class=\"info-box-content\">\n                    <span class=\"info-box-text\">Hummidity</span>\n                    <span class=\"info-box-number\">{{humi}}<small>%</small></span>\n                </div>\n                <!-- /.info-box-content -->\n            </div>\n            <!-- /.info-box -->\n        </div>\n        <!-- /.col -->\n        <div class=\"col-md-3 col-sm-6 col-xs-12\">\n            <div class=\"info-box\">\n                <span class=\"info-box-icon bg-red\"><i class=\"fa fa-thermometer-three-quarters\"></i></span>\n                <div class=\"info-box-content\">\n                    <span class=\"info-box-text\">Temperature</span>\n                    <span class=\"info-box-number\">{{temp}} <small>°C</small></span>\n                </div>\n                <!-- /.info-box-content -->\n            </div>\n            <!-- /.info-box -->\n        </div>\n        <!-- /.col -->\n        <!-- fix for small devices only -->\n        <div class=\"clearfix visible-sm-block\"></div>\n        <div class=\"col-md-3 col-sm-6 col-xs-12\">\n            <div class=\"info-box\">\n                <span class=\"info-box-icon bg-green\"><i class=\"fa fa-thermometer-half\"></i></span>\n                <div class=\"info-box-content\">\n                    <span class=\"info-box-text\">Temp OnBoard</span>\n                    <span class=\"info-box-number\">{{tempOnBoard}} <small>°C</small></span>\n                </div>\n                <!-- /.info-box-content -->\n            </div>\n            <!-- /.info-box -->\n        </div>\n        <!-- /.col -->\n        <div class=\"col-md-3 col-sm-6 col-xs-12\">\n            <div class=\"info-box\">\n                <span class=\"info-box-icon bg-yellow\"><i class=\"fa fa-battery-full\"></i></span>\n                <div class=\"info-box-content\">\n                    <span class=\"info-box-text\">Battery</span>\n                    <span class=\"info-box-number\">{{battery}} <small>V</small></span>\n                </div>\n                <!-- /.info-box-content -->\n            </div>\n            <!-- /.info-box -->\n        </div>\n        <!-- /.col -->\n    </div>\n</div>\n<div class=\"row\">\n    <chart-line></chart-line>\n    <section class=\"col-lg-12\" *ngIf=\"datas\">\n        <div class=\"box box-warning box-solid collapsed-box\">\n            <div class=\"box-header with-border\">\n                <h3 class=\"box-title\">Data table</h3>\n                <div class=\"box-tools pull-right\">\n                    <span class=\"label label-info\">Total {{datas.length}} records</span>\n                    <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-plus\"></i>\n                    </button>\n                    <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n                </div>\n            </div>\n            <div class=\"box-body\">\n                <div class=\"table-responsive\">\n                    <table class=\"table text-center table-striped table-hover\">\n                        <thead>\n                            <tr>\n                                <th>Time</th>\n                                <th>ADC1 (V)</th>\n                                <th>ADC2 (V)</th>\n                                <th>ADC3 (V)</th>\n                                <th>Temperature On Board (°C)</th>\n                                <th>Battery (V)</th>\n                                <th>Temperature Sensor (°C)</th>\n                                <th>Humidity Sensor (%)</th>\n                                <th>Address (IPv6)</th>\n                            </tr>\n                        </thead>\n                        <tbody>\n                            <tr *ngFor=\"let item of datas\">\n                                <td>{{item.time | date: 'hh:mm:ss'}}</td>\n                                <td>{{item.adc1/1000}} </td>\n                                <td>{{item.adc2/100}} </td>\n                                <td>{{item.adc3/1000}} </td>\n                                <td>{{item.temperature/1000}} </td>\n                                <td>{{item.battery/1000}} </td>\n                                <td>{{item.sensor_temperature/10}} </td>\n                                <td>{{item.sensor_humidity/10}} </td>\n                                <td>{{item.addr}} </td>\n                            </tr>\n                        </tbody>\n                    </table>\n                </div>\n            </div>\n        </div>\n    </section>\n    <chart-bar></chart-bar>\n    <chart-radar></chart-radar>\n</div>"
+module.exports = "<div class=\"container-fluid\">\n    <h4>Current data</h4>\n    <!-- <h4>{{ 'NOTIFBOX.FOOTER' | translate }}</h4> -->\n    <div class=\"row\">\n        <div class=\"col-md-3 col-sm-6 col-xs-12\">\n            <div class=\"info-box\">\n                <span class=\"info-box-icon bg-aqua\"><i class=\"fa fa-tint\"></i></span>\n                <div class=\"info-box-content\">\n                    <span class=\"info-box-text\">Hummidity</span>\n                    <span class=\"info-box-number\">{{humi}}<small>%</small></span>\n                </div>\n                <!-- /.info-box-content -->\n            </div>\n            <!-- /.info-box -->\n        </div>\n        <!-- /.col -->\n        <div class=\"col-md-3 col-sm-6 col-xs-12\">\n            <div class=\"info-box\">\n                <span class=\"info-box-icon bg-red\"><i class=\"fa fa-thermometer-three-quarters\"></i></span>\n                <div class=\"info-box-content\">\n                    <span class=\"info-box-text\">Temperature</span>\n                    <span class=\"info-box-number\">{{temp}} <small>°C</small></span>\n                </div>\n                <!-- /.info-box-content -->\n            </div>\n            <!-- /.info-box -->\n        </div>\n        <!-- /.col -->\n        <!-- fix for small devices only -->\n        <div class=\"clearfix visible-sm-block\"></div>\n        <div class=\"col-md-3 col-sm-6 col-xs-12\">\n            <div class=\"info-box\">\n                <span class=\"info-box-icon bg-green\"><i class=\"fa fa-thermometer-half\"></i></span>\n                <div class=\"info-box-content\">\n                    <span class=\"info-box-text\">Temp OnBoard</span>\n                    <span class=\"info-box-number\">{{tempOnBoard}} <small>°C</small></span>\n                </div>\n                <!-- /.info-box-content -->\n            </div>\n            <!-- /.info-box -->\n        </div>\n        <!-- /.col -->\n        <div class=\"col-md-3 col-sm-6 col-xs-12\">\n            <div class=\"info-box\">\n                <span class=\"info-box-icon bg-yellow\"><i class=\"fa fa-battery-full\"></i></span>\n                <div class=\"info-box-content\">\n                    <span class=\"info-box-text\">Battery</span>\n                    <span class=\"info-box-number\">{{battery}} <small>V</small></span>\n                </div>\n                <!-- /.info-box-content -->\n            </div>\n            <!-- /.info-box -->\n        </div>\n        <!-- /.col -->\n    </div>\n</div>\n<div class=\"row\">\n    <chart-line></chart-line>\n    <section class=\"col-lg-12\" *ngIf=\"datas\">\n        <div class=\"box box-warning box-solid collapsed-box\">\n            <div class=\"box-header with-border\">\n                <h3 class=\"box-title\">Data table</h3>\n                <div class=\"box-tools pull-right\">\n                    <span class=\"label label-info\">Total {{datas.length}} records</span>\n                    <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"collapse\"><i class=\"fa fa-plus\"></i>\n                    </button>\n                    <button type=\"button\" class=\"btn btn-box-tool\" data-widget=\"remove\"><i class=\"fa fa-times\"></i></button>\n                </div>\n            </div>\n            <div class=\"box-body\">\n                <div class=\"table-responsive\">\n                    <table class=\"table text-center table-striped table-hover\">\n                        <thead>\n                            <tr>\n                                <th>Time</th>\n                                <th>ADC1 (V)</th>\n                                <th>ADC2 (V)</th>\n                                <th>ADC3 (V)</th>\n                                <th>Temperature On Board (°C)</th>\n                                <th>Battery (V)</th>\n                                <th>Temperature Sensor (°C)</th>\n                                <th>Humidity Sensor (%)</th>\n                                <th>Address (IPv6)</th>\n                            </tr>\n                        </thead>\n                        <tbody>\n                            <tr *ngFor=\"let item of datas\">\n                                <td>{{item.time | date: 'hh:mm:ss'}}</td>\n                                <td>{{item.adc1/1000}} </td>\n                                <td>{{item.adc2/100}} </td>\n                                <td>{{item.adc3/1000}} </td>\n                                <td>{{item.temperature/1000}} </td>\n                                <td>{{item.battery/1000}} </td>\n                                <td>{{item.sensor_temperature/10}} </td>\n                                <td>{{item.sensor_humidity/10}} </td>\n                                <td>{{item.addr}} </td>\n                            </tr>\n                        </tbody>\n                    </table>\n                </div>\n            </div>\n        </div>\n    </section>\n    <chart-bar></chart-bar>\n    <chart-radar></chart-radar>\n</div>\n"
 
 /***/ }),
 
@@ -2767,15 +2818,26 @@ var HomeComponent = (function () {
                     time: new Date()
                 });
             });
-            _this.rest.streamObserveCoAP().subscribe(function (data) {
-                _this.notification.success(data, 'CoAP Observe');
-            });
+        }, function (err) {
+            _this.notification.error(err, 'Error');
+        });
+        this.rest.streamObserveCoAP().subscribe(function (data) {
+            _this.notification.success(JSON.stringify(data), 'CoAP Observe');
         });
     };
     HomeComponent.prototype.ngOnDestroy = function () {
         this.breadServ.clear();
-        if (this.subscribe)
+        if (this.subscribe) {
             this.subscribe.unsubscribe();
+        }
+        var json = localStorage.getItem('rest_all_om2m');
+        if (json) {
+            localStorage.setItem('rest_all_om2m', JSON.stringify({
+                data: this.datas,
+                date: JSON.parse(localStorage.getItem('rest_all_om2m')).date
+            }));
+            // console.log(JSON.parse(localStorage.getItem('rest_all_om2m')).data.length);
+        }
     };
     return HomeComponent;
 }());
@@ -3019,20 +3081,24 @@ var UiSwitchComponent = (function () {
     });
     ;
     UiSwitchComponent.prototype.getColor = function (flag) {
-        if (flag === 'borderColor')
+        if (flag === 'borderColor') {
             return this.defaultBoColor;
+        }
         if (flag === 'switchColor') {
-            if (this.reverse)
+            if (this.reverse) {
                 return !this.checked ? this.switchColor : this.switchOffColor || this.switchColor;
+            }
             return this.checked ? this.switchColor : this.switchOffColor || this.switchColor;
         }
-        if (this.reverse)
+        if (this.reverse) {
             return !this.checked ? this.color : this.defaultBgColor;
+        }
         return this.checked ? this.color : this.defaultBgColor;
     };
     UiSwitchComponent.prototype.onToggle = function () {
-        if (this.disabled)
+        if (this.disabled) {
             return;
+        }
         this.checked = !this.checked;
         this.change.emit(this.checked);
         this.onChangeCallback(this.checked);

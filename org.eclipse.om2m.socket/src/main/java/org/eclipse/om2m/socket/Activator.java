@@ -21,6 +21,9 @@ public class Activator implements BundleActivator {
 	private static String socketio_port = System.getProperty(
 			"org.eclipse.om2m.sensor.socketio.port", "9092");
 
+	public static final String SSE_TOPIC_MSG = "msg";
+	public static final String SSE_TOPIC_OBS = "obj";
+
 	/** Logger */
 	private static Log logger = LogFactory.getLog(Activator.class);
 	/** SCL service tracker */
@@ -54,14 +57,24 @@ public class Activator implements BundleActivator {
 						config.setHostname(address);
 						config.setPort(Integer.parseInt(socketio_port));
 						server = new SocketIOServer(config);
-						server.addEventListener("msg", Object.class,
+						server.addEventListener(SSE_TOPIC_MSG, Object.class,
 								new DataListener<Object>() {
 									@Override
 									public void onData(SocketIOClient client,
 											Object data, AckRequest ackRequest) {
 										System.out.println(data);
 										server.getBroadcastOperations()
-												.sendEvent("msg", data);
+												.sendEvent(SSE_TOPIC_MSG, data);
+									}
+								});
+						server.addEventListener(SSE_TOPIC_OBS, Object.class,
+								new DataListener<Object>() {
+									@Override
+									public void onData(SocketIOClient client,
+											Object data, AckRequest ackRequest) {
+										System.out.println(data);
+										server.getBroadcastOperations()
+												.sendEvent(SSE_TOPIC_OBS, data);
 									}
 								});
 						server.start();
